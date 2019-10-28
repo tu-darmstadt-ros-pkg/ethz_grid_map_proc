@@ -60,12 +60,6 @@ target_link_libraries(${PROJECT_NAME}_node
 ## Install ##
 #############
 
-install(DIRECTORY
-  config
-  launch
-  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
-)
-
 install(TARGETS grid_map_to_occupancy_grid ${PROJECT_NAME}_node
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
