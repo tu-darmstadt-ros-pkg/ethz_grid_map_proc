@@ -51,6 +51,10 @@ private:
   boost::shared_ptr<ReconfigureServer> dyn_rec_server_;
   boost::recursive_mutex config_mutex_;
   
+  // Parameters
+  std::string traversability_layer_name_;
+
+  // Dynamic reconfigure parameters
   float p_occupied_threshold_;
   float p_goal_clear_radius_;
   bool p_obstacle_u_forward_;

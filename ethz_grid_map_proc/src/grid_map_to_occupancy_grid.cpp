@@ -3,26 +3,29 @@
 
 GridMapToOccupancyGrid::GridMapToOccupancyGrid(ros::NodeHandle nh, ros::NodeHandle pnh) : nh_(nh) ,pnh_(pnh)
 {
+  // Load parameters
+  pnh_.param<std::string>("traversability_layer_name", traversability_layer_name_, "traversability");
+  // Initialize dynamic reconfigure
   dyn_rec_server_.reset(new ReconfigureServer(config_mutex_, pnh_));
   dyn_rec_server_->setCallback(boost::bind(&GridMapToOccupancyGrid::reconfigureCallback, this, _1, _2));
 
+  // Initialize global map
   global_map_.add("obstacle");
-  global_map_.add("traversability");
+  global_map_.add(traversability_layer_name_);
   global_map_.add("obstacle_objects");
   global_map_.add("fused");
-       //grid_map_.add("update_time");
   global_map_.setGeometry(grid_map::Length(20.0, 20.0), 0.05);
-
   global_map_.setFrameId("world");
-
   this->clear();
 
+  // Publishers
   occ_grid_raw_pub_    = nh_.advertise<nav_msgs::OccupancyGrid>("/local_traversability_map_raw", 1);
   occ_grid_pub_        = nh_.advertise<nav_msgs::OccupancyGrid>("/local_traversability_map", 1);
   global_occ_grid_pub_ = nh_.advertise<nav_msgs::OccupancyGrid>("/map", 1);
 
   grid_map_pub_ = nh_.advertise<grid_map_msgs::GridMap>("/global_map_debug", 1);
 
+  // Subscribers
   obstacle_grid_map_sub_ = nh_.subscribe("/obstacle_map_throttled", 1, &GridMapToOccupancyGrid::obstacleMapCallback, this);
   obstacle_object_sub_ = nh_.subscribe("/hector_obstacle_server/obstacle_model", 1, &GridMapToOccupancyGrid::obstacleObjectCallback, this);
 
@@ -44,11 +47,11 @@ void GridMapToOccupancyGrid::obstacleMapCallback(const nav_msgs::OccupancyGridCo
     global_map_["fused"] = global_map_["obstacle"];
   } else if (p_enable_traversability_map && !p_enable_obstacle_map) {
     // Only traversability map
-    global_map_["fused"] = global_map_["traversability"];
+    global_map_["fused"] = global_map_[traversability_layer_name_];
   } else {
     // Fuse both
     grid_map::Matrix& obstacle_data   = global_map_["obstacle"];
-    grid_map::Matrix& traversability_data = global_map_["traversability"];
+    grid_map::Matrix& traversability_data = global_map_[traversability_layer_name_];
     grid_map::Matrix& fused_data = global_map_["fused"];
     for (grid_map::GridMapIterator iterator(global_map_); !iterator.isPastEnd(); ++iterator) {
       const grid_map::Index index(*iterator);
@@ -115,20 +118,20 @@ void GridMapToOccupancyGrid::obstacleObjectCallback(const hector_obstacle_msgs::
 
 void GridMapToOccupancyGrid::gridMapCallback(const grid_map_msgs::GridMapConstPtr msg)
 {
+  // Convert message to grid map object
   grid_map::GridMap local_grid_map;
   grid_map::GridMapRosConverter::fromMessage(*msg, local_grid_map);
-//    ROS_INFO_STREAM("map: " << local_grid_map["traversability"]);
 
-  // Added because the local map is thresholded below
+  // Publish as occupancy map before tresholding
   if (occ_grid_raw_pub_.getNumSubscribers() > 0){
     nav_msgs::OccupancyGrid local_occupancy_grid;
 
-    grid_map::GridMapRosConverter::toOccupancyGrid(local_grid_map, "traversability", 1.0, 0.0, local_occupancy_grid);
+    grid_map::GridMapRosConverter::toOccupancyGrid(local_grid_map, traversability_layer_name_, 1.0, 0.0, local_occupancy_grid);
     occ_grid_raw_pub_.publish(local_occupancy_grid);
   }
 
   // Threshold map and convert traversability to obstacle
-  grid_map::Matrix& data = local_grid_map["traversability"];
+  grid_map::Matrix& data = local_grid_map[traversability_layer_name_];
   for (grid_map::GridMapIterator iterator(local_grid_map); !iterator.isPastEnd(); ++iterator) {
     const grid_map::Index index(*iterator);
     float& value = data(index(0), index(1));
@@ -144,10 +147,10 @@ void GridMapToOccupancyGrid::gridMapCallback(const grid_map_msgs::GridMapConstPt
 
   // Insert current local traversability map into global map
   std::vector<std::string> layers_to_use;
-  layers_to_use.push_back("traversability");
+  layers_to_use.push_back(traversability_layer_name_);
   global_map_.addDataFrom(local_grid_map, true, true, false, layers_to_use);
 
-  grid_map::Matrix& traversability_data = global_map_["traversability"];
+  grid_map::Matrix& traversability_data = global_map_[traversability_layer_name_];
 
   // Clear waypoints
   for (size_t i = 0; i < path.poses.size(); ++i)
@@ -212,7 +215,7 @@ void GridMapToOccupancyGrid::gridMapCallback(const grid_map_msgs::GridMapConstPt
   if (occ_grid_pub_.getNumSubscribers() > 0){
     nav_msgs::OccupancyGrid local_occupancy_grid;
 
-    grid_map::GridMapRosConverter::toOccupancyGrid(local_grid_map, "traversability", 0.0, 100.0, local_occupancy_grid);
+    grid_map::GridMapRosConverter::toOccupancyGrid(local_grid_map, traversability_layer_name_, 0.0, 100.0, local_occupancy_grid);
     occ_grid_pub_.publish(local_occupancy_grid);
   }
 
@@ -220,7 +223,7 @@ void GridMapToOccupancyGrid::gridMapCallback(const grid_map_msgs::GridMapConstPt
 
 //      nav_msgs::OccupancyGrid occupancy_grid;
 
-//      grid_map::GridMapRosConverter::toOccupancyGrid(global_map_, "traversability", 1.0, 0.0, occupancy_grid);
+//      grid_map::GridMapRosConverter::toOccupancyGrid(global_map_, traversability_layer_name_, 1.0, 0.0, occupancy_grid);
 //      global_occ_grid_pub_.publish(occupancy_grid);
 //    }
 }
