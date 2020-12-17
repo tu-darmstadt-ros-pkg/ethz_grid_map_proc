@@ -45,8 +45,8 @@ set(SOURCES
 )
 
 add_library(grid_map_to_occupancy_grid ${HEADERS} ${SOURCES})
+add_dependencies(grid_map_to_occupancy_grid ${PROJECT_NAME}_gencfg ${catkin_EXPORTED_TARGETS})
 target_link_libraries(grid_map_to_occupancy_grid ${catkin_LIBRARIES})
-add_dependencies(grid_map_to_occupancy_grid ${catkin_EXPORTED_TARGETS})
 
 add_executable(${PROJECT_NAME}_node src/grid_map_to_occupancy_grid_node.cpp)
 add_dependencies(${PROJECT_NAME}_node ${PROJECT_NAME}_gencfg)
