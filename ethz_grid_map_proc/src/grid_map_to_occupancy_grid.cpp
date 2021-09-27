@@ -235,7 +235,7 @@ void GridMapToOccupancyGrid::pathCallback(const nav_msgs::PathConstPtr msg)
 
 void GridMapToOccupancyGrid::sysCommandCallback(const std_msgs::StringConstPtr msg)
 {
-  if (msg->data == "reset"){
+  if (msg->data == "reset" || msg->data == "reset_2d_map"){
     this->clear();
   }
 }
