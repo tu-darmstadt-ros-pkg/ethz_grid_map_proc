@@ -33,7 +33,7 @@ GridMapToOccupancyGrid::GridMapToOccupancyGrid(ros::NodeHandle nh, ros::NodeHand
   syscommand_sub_ = nh_.subscribe("/syscommand", 1, &GridMapToOccupancyGrid::sysCommandCallback, this);
   path_sub_ = nh_.subscribe("/path_to_follow", 1, &GridMapToOccupancyGrid::pathCallback, this);
 }
-      
+
 void GridMapToOccupancyGrid::obstacleMapCallback(const nav_msgs::OccupancyGridConstPtr msg)
 {
   grid_map::GridMap local_obstacle_map;
@@ -56,11 +56,14 @@ void GridMapToOccupancyGrid::obstacleMapCallback(const nav_msgs::OccupancyGridCo
     for (grid_map::GridMapIterator iterator(global_map_); !iterator.isPastEnd(); ++iterator) {
       const grid_map::Index index(*iterator);
 
-      if (obstacle_data(index(0), index(1)) < traversability_data(index(0), index(1)) || std::isnan(obstacle_data(index(0), index(1)))) {
-        fused_data(index(0), index(1)) = traversability_data(index(0), index(1));
-      } else {
-        fused_data(index(0), index(1)) = obstacle_data(index(0), index(1));
-      }
+        if (std::isnan(obstacle_data(index(0), index(1)))) {
+            fused_data(index(0), index(1)) = traversability_data(index(0), index(1));
+        } else if (std::isnan(traversability_data(index(0), index(1))) ||
+                   obstacle_data(index(0), index(1)) >= traversability_data(index(0), index(1))) {
+            fused_data(index(0), index(1)) = obstacle_data(index(0), index(1));
+        } else {
+            fused_data(index(0), index(1)) = traversability_data(index(0), index(1));
+        }
     }
   }
 
