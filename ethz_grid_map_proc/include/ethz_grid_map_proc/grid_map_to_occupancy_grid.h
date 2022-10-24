@@ -14,7 +14,7 @@ public:
 
   GridMapToOccupancyGrid(ros::NodeHandle nh, ros::NodeHandle pnh);
       
-  void obstacleMapCallback(const nav_msgs::OccupancyGridConstPtr msg);
+  void obstacleMapCallback(const nav_msgs::OccupancyGridConstPtr& msg);
 
   void obstacleObjectCallback(const hector_obstacle_msgs::ObstacleModelConstPtr msg);
 

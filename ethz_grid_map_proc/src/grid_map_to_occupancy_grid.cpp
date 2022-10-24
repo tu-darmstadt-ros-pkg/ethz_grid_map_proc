@@ -34,12 +34,12 @@ GridMapToOccupancyGrid::GridMapToOccupancyGrid(ros::NodeHandle nh, ros::NodeHand
   path_sub_ = nh_.subscribe("/path_to_follow", 1, &GridMapToOccupancyGrid::pathCallback, this);
 }
 
-void GridMapToOccupancyGrid::obstacleMapCallback(const nav_msgs::OccupancyGridConstPtr msg)
+void GridMapToOccupancyGrid::obstacleMapCallback(const nav_msgs::OccupancyGridConstPtr& msg)
 {
   grid_map::GridMap local_obstacle_map;
   grid_map::GridMapRosConverter::fromOccupancyGrid(*msg, "obstacle", local_obstacle_map);
   std::vector<std::string> layers_to_use;
-  layers_to_use.push_back("obstacle");
+  layers_to_use.emplace_back("obstacle");
   global_map_.addDataFrom(local_obstacle_map, true, true, false, layers_to_use);
 
   if (p_enable_obstacle_map && !p_enable_traversability_map) {
