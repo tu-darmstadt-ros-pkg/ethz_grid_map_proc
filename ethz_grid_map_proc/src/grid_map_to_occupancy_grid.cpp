@@ -48,6 +48,9 @@ void GridMapToOccupancyGrid::obstacleMapCallback(const nav_msgs::OccupancyGridCo
   } else if (p_enable_traversability_map && !p_enable_obstacle_map) {
     // Only traversability map
     global_map_["fused"] = global_map_[traversability_layer_name_];
+  } else if (!p_enable_traversability_map /*&& !p_enable_obstacle_map*/) {
+    // Both maps disabled, add empty map
+    global_map_.add("fused", NAN);
   } else {
     // Fuse both
     grid_map::Matrix& obstacle_data   = global_map_["obstacle"];
