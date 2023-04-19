@@ -42,78 +42,8 @@ void GridMapToOccupancyGrid::obstacleMapCallback(const nav_msgs::OccupancyGridCo
   layers_to_use.emplace_back("obstacle");
   global_map_.addDataFrom(local_obstacle_map, true, true, false, layers_to_use);
 
-  if (p_enable_obstacle_map && !p_enable_traversability_map) {
-    // Only obstacle map
-    global_map_["fused"] = global_map_["obstacle"];
-  } else if (p_enable_traversability_map && !p_enable_obstacle_map) {
-    // Only traversability map
-    global_map_["fused"] = global_map_[traversability_layer_name_];
-  } else if (!p_enable_traversability_map /*&& !p_enable_obstacle_map*/) {
-    // Both maps disabled, add empty map
-    global_map_.add("fused", NAN);
-  } else {
-    // Fuse both
-    grid_map::Matrix& obstacle_data   = global_map_["obstacle"];
-    grid_map::Matrix& traversability_data = global_map_[traversability_layer_name_];
-    grid_map::Matrix& fused_data = global_map_["fused"];
-    for (grid_map::GridMapIterator iterator(global_map_); !iterator.isPastEnd(); ++iterator) {
-      const grid_map::Index index(*iterator);
-
-        if (std::isnan(obstacle_data(index(0), index(1)))) {
-            fused_data(index(0), index(1)) = traversability_data(index(0), index(1));
-        } else if (std::isnan(traversability_data(index(0), index(1))) ||
-                   obstacle_data(index(0), index(1)) >= traversability_data(index(0), index(1))) {
-            fused_data(index(0), index(1)) = obstacle_data(index(0), index(1));
-        } else {
-            fused_data(index(0), index(1)) = traversability_data(index(0), index(1));
-        }
-    }
-  }
-
-  // add obstacle model
-  if(!obstacle_model_.model.empty())
-  {
-    for( const hector_obstacle_msgs::Obstacle& obstacle : obstacle_model_.model)
-    {
-      if(obstacle.shape_type == hector_obstacle_msgs::Obstacle::SHAPE_LINE_WITH_ENDPOINTS)
-      {
-        if(obstacle.points.size() == 2)
-        {
-
-          grid_map::Position start(obstacle.points[0].x, obstacle.points[0].y);
-          grid_map::Position end(obstacle.points[1].x, obstacle.points[1].y);
-
-          for (grid_map::LineIterator iterator(global_map_, start, end); !iterator.isPastEnd(); ++iterator) {
-            global_map_.at("fused", *iterator) = 100.0;
-          }
-        }
-      }
-    }
-  }
-
-  // Set all unknown space to free
-  if (p_unknown_space_to_free_) {
-    grid_map::Matrix& fused_data = global_map_["fused"];
-    for (grid_map::GridMapIterator iterator(global_map_); !iterator.isPastEnd(); ++iterator) {
-      const grid_map::Index index(*iterator);
-      if (std::isnan(fused_data(index(0), index(1)))) {
-        fused_data(index(0), index(1)) = 0;
-      }
-    }
-  }
-
-  // publish fused map
-  if (global_occ_grid_pub_.getNumSubscribers() > 0) {
-    nav_msgs::OccupancyGrid occupancy_grid;
-    grid_map::GridMapRosConverter::toOccupancyGrid(global_map_, "fused", 0.0, 100.0, occupancy_grid);
-    global_occ_grid_pub_.publish(occupancy_grid);
-  }
-
-  if (grid_map_pub_.getNumSubscribers() >0 )
-  {
-    grid_map_msgs::GridMap grid_map_msg;
-    grid_map::GridMapRosConverter::toMessage(global_map_, grid_map_msg);
-    grid_map_pub_.publish(grid_map_msg);
+  if (!p_enable_traversability_map) {
+    updateFusedMap();
   }
 }
 
@@ -210,12 +140,16 @@ void GridMapToOccupancyGrid::gridMapCallback(const grid_map_msgs::GridMapConstPt
 
   }
 
-  if (grid_map_pub_.getNumSubscribers() >0 )
-  {
-    grid_map_msgs::GridMap grid_map_msg;
-    grid_map::GridMapRosConverter::toMessage(global_map_, grid_map_msg);
-    grid_map_pub_.publish(grid_map_msg);
+  if (p_enable_traversability_map) {
+    updateFusedMap();
   }
+
+//  if (grid_map_pub_.getNumSubscribers() >0 )
+//  {
+//    grid_map_msgs::GridMap grid_map_msg;
+//    grid_map::GridMapRosConverter::toMessage(global_map_, grid_map_msg);
+//    grid_map_pub_.publish(grid_map_msg);
+//  }
 
 
   if (occ_grid_pub_.getNumSubscribers() > 0){
@@ -270,4 +204,80 @@ void GridMapToOccupancyGrid::reconfigureCallback(ethz_grid_map_proc::GridMapProc
            config.enable_obstacle_map?"True":"False",
            config.enable_traversability_map?"True":"False",
            config.unknown_space_to_free?"True":"False");
+}
+
+void GridMapToOccupancyGrid::updateFusedMap()
+{
+  if (p_enable_obstacle_map && !p_enable_traversability_map) {
+    // Only obstacle map
+    global_map_["fused"] = global_map_["obstacle"];
+  } else if (p_enable_traversability_map && !p_enable_obstacle_map) {
+    // Only traversability map
+    global_map_["fused"] = global_map_[traversability_layer_name_];
+  } else if (!p_enable_traversability_map /*&& !p_enable_obstacle_map*/) {
+    // Both maps disabled, add empty map
+    global_map_.add("fused", NAN);
+  } else {
+    // Fuse both
+    grid_map::Matrix& obstacle_data   = global_map_["obstacle"];
+    grid_map::Matrix& traversability_data = global_map_[traversability_layer_name_];
+    grid_map::Matrix& fused_data = global_map_["fused"];
+    for (grid_map::GridMapIterator iterator(global_map_); !iterator.isPastEnd(); ++iterator) {
+      const grid_map::Index index(*iterator);
+
+      if (std::isnan(obstacle_data(index(0), index(1)))) {
+        fused_data(index(0), index(1)) = traversability_data(index(0), index(1));
+      } else if (std::isnan(traversability_data(index(0), index(1))) ||
+               obstacle_data(index(0), index(1)) >= traversability_data(index(0), index(1))) {
+        fused_data(index(0), index(1)) = obstacle_data(index(0), index(1));
+      } else {
+        fused_data(index(0), index(1)) = traversability_data(index(0), index(1));
+      }
+    }
+  }
+
+  // add obstacle model
+  if(!obstacle_model_.model.empty())
+  {
+    for( const hector_obstacle_msgs::Obstacle& obstacle : obstacle_model_.model)
+    {
+      if(obstacle.shape_type == hector_obstacle_msgs::Obstacle::SHAPE_LINE_WITH_ENDPOINTS)
+      {
+        if(obstacle.points.size() == 2)
+        {
+          grid_map::Position start(obstacle.points[0].x, obstacle.points[0].y);
+          grid_map::Position end(obstacle.points[1].x, obstacle.points[1].y);
+
+          for (grid_map::LineIterator iterator(global_map_, start, end); !iterator.isPastEnd(); ++iterator) {
+            global_map_.at("fused", *iterator) = 100.0;
+          }
+        }
+      }
+    }
+  }
+
+  // Set all unknown space to free
+  if (p_unknown_space_to_free_) {
+    grid_map::Matrix& fused_data = global_map_["fused"];
+    for (grid_map::GridMapIterator iterator(global_map_); !iterator.isPastEnd(); ++iterator) {
+      const grid_map::Index index(*iterator);
+      if (std::isnan(fused_data(index(0), index(1)))) {
+        fused_data(index(0), index(1)) = 0;
+      }
+    }
+  }
+
+  // publish fused map
+  if (global_occ_grid_pub_.getNumSubscribers() > 0) {
+    nav_msgs::OccupancyGrid occupancy_grid;
+    grid_map::GridMapRosConverter::toOccupancyGrid(global_map_, "fused", 0.0, 100.0, occupancy_grid);
+    global_occ_grid_pub_.publish(occupancy_grid);
+  }
+
+  if (grid_map_pub_.getNumSubscribers() >0 )
+  {
+    grid_map_msgs::GridMap grid_map_msg;
+    grid_map::GridMapRosConverter::toMessage(global_map_, grid_map_msg);
+    grid_map_pub_.publish(grid_map_msg);
+  }
 }

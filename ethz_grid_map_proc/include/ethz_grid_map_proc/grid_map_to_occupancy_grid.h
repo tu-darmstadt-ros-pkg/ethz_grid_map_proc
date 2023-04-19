@@ -29,6 +29,7 @@ public:
   void reconfigureCallback(ethz_grid_map_proc::GridMapProcConfig &config, uint32_t level);
 
 private:
+  void updateFusedMap();
   ros::Publisher occ_grid_pub_;
   ros::Publisher occ_grid_raw_pub_;
   ros::Publisher global_occ_grid_pub_;
