@@ -3,6 +3,7 @@
 #include <nav_msgs/OccupancyGrid.h>
 #include <nav_msgs/Path.h>
 #include <std_msgs/String.h>
+#include <std_msgs/Float32.h>
 #include <hector_obstacle_msgs/ObstacleModel.h>
 
 #include <dynamic_reconfigure/server.h>
@@ -35,6 +36,7 @@ private:
   ros::Publisher global_occ_grid_pub_;
 
   ros::Publisher grid_map_pub_;
+  ros::Publisher debug_[11];
 
   ros::Subscriber obstacle_grid_map_sub_;
   ros::Subscriber grid_map_sub_;
