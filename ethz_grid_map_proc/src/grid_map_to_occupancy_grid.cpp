@@ -5,6 +5,7 @@ GridMapToOccupancyGrid::GridMapToOccupancyGrid(ros::NodeHandle nh, ros::NodeHand
 {
   // Load parameters
   pnh_.param<std::string>("traversability_layer_name", traversability_layer_name_, "traversability");
+  pnh_.param<std::string>("elevation_layer_name", elevation_layer_name_, "elevation");
   // Initialize dynamic reconfigure
   dyn_rec_server_.reset(new ReconfigureServer(config_mutex_, pnh_));
   dyn_rec_server_->setCallback(boost::bind(&GridMapToOccupancyGrid::reconfigureCallback, this, _1, _2));
@@ -13,6 +14,7 @@ GridMapToOccupancyGrid::GridMapToOccupancyGrid(ros::NodeHandle nh, ros::NodeHand
   global_map_.add("obstacle");
   global_map_.add(traversability_layer_name_);
   global_map_.add("obstacle_objects");
+  global_map_.add(elevation_layer_name_);
   global_map_.add("fused");
   global_map_.setGeometry(grid_map::Length(20.0, 20.0), 0.05);
   global_map_.setFrameId("world");
@@ -84,6 +86,7 @@ void GridMapToOccupancyGrid::gridMapCallback(const grid_map_msgs::GridMapConstPt
   // Insert current local traversability map into global map
   std::vector<std::string> layers_to_use;
   layers_to_use.push_back(traversability_layer_name_);
+  layers_to_use.emplace_back(elevation_layer_name_);
   global_map_.addDataFrom(local_grid_map, true, true, false, layers_to_use);
 
   grid_map::Matrix& traversability_data = global_map_[traversability_layer_name_];

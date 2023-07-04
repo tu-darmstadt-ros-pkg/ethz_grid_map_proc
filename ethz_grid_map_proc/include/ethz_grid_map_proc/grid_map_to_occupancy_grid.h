@@ -54,6 +54,7 @@ private:
   
   // Parameters
   std::string traversability_layer_name_;
+  std::string elevation_layer_name_;
 
   // Dynamic reconfigure parameters
   float p_occupied_threshold_;
