@@ -24,7 +24,7 @@ GridMapToOccupancyGrid::GridMapToOccupancyGrid(ros::NodeHandle nh, ros::NodeHand
   global_occ_grid_pub_ = nh_.advertise<nav_msgs::OccupancyGrid>("/map", 1);
 
   grid_map_pub_ = nh_.advertise<grid_map_msgs::GridMap>("/global_map_debug", 1);
-  for(int i = 0; i < 11 ; i++) {
+  for(int i = 0; i < 14 ; i++) {
     std::string name = "/debug";
     name.append(std::to_string(i));
     debug_[i] = nh_.advertise<std_msgs::Float32>(name, 1);
@@ -45,7 +45,6 @@ void GridMapToOccupancyGrid::obstacleMapCallback(const nav_msgs::OccupancyGridCo
   std::vector<std::string> layers_to_use;
   layers_to_use.emplace_back("obstacle");
   global_map_.addDataFrom(local_obstacle_map, true, true, false, layers_to_use);
-
   if (!p_enable_traversability_map) {
     updateFusedMap();
   }
@@ -74,9 +73,7 @@ void GridMapToOccupancyGrid::gridMapCallback(const grid_map_msgs::GridMapConstPt
   grid_map::Matrix& data = local_grid_map[traversability_layer_name_];
   //debug
   std_msgs::Float32 debug_msg;
-  float counter_0 = 0;
   for (grid_map::GridMapIterator iterator(local_grid_map); !iterator.isPastEnd(); ++iterator) {
-    counter_0++;
     const grid_map::Index index(*iterator);
     float& value = data(index(0), index(1));
     if (std::isnan(value)) {
@@ -88,14 +85,14 @@ void GridMapToOccupancyGrid::gridMapCallback(const grid_map_msgs::GridMapConstPt
       value = 0;
     }
   }
-  debug_msg.data = counter_0;
+  grid_map::Size size = local_grid_map.getSize();
+  debug_msg.data = size.cols() * size.rows();
   debug_[0].publish(debug_msg);
 
   // Insert current local traversability map into global map
   std::vector<std::string> layers_to_use;
   layers_to_use.push_back(traversability_layer_name_);
   global_map_.addDataFrom(local_grid_map, true, true, false, layers_to_use);
-
   grid_map::Matrix& traversability_data = global_map_[traversability_layer_name_];
 
   // Clear waypoints
@@ -261,20 +258,34 @@ void GridMapToOccupancyGrid::updateFusedMap()
     grid_map::Matrix& fused_data = global_map_["fused"];
     //debug
     float counter_7 = 0;
+    float counter_no_obs = 0;
+    float counter_no_tra = 0;
+    float counter_else = 0;
+    //This matrix gets bigger 
     for (grid_map::GridMapIterator iterator(global_map_); !iterator.isPastEnd(); ++iterator) {
       const grid_map::Index index(*iterator);
       counter_7++;
       if (std::isnan(obstacle_data(index(0), index(1)))) {
         fused_data(index(0), index(1)) = traversability_data(index(0), index(1));
+        counter_no_obs++;
       } else if (std::isnan(traversability_data(index(0), index(1))) ||
                obstacle_data(index(0), index(1)) >= traversability_data(index(0), index(1))) {
         fused_data(index(0), index(1)) = obstacle_data(index(0), index(1));
+        counter_no_tra++;
       } else {
         fused_data(index(0), index(1)) = traversability_data(index(0), index(1));
+        counter_else++;
       }
     }
+    msg.data = counter_no_obs;
+    debug_[11].publish(msg);
+    msg.data = counter_no_tra;
+    debug_[12].publish(msg);
+    msg.data = counter_else;
+    debug_[13].publish(msg);
     msg.data = counter_7;
     debug_[7].publish(msg);
+    //This matrix gets bigger end
   }
 
   // add obstacle model

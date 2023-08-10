@@ -36,7 +36,7 @@ private:
   ros::Publisher global_occ_grid_pub_;
 
   ros::Publisher grid_map_pub_;
-  ros::Publisher debug_[11];
+  ros::Publisher debug_[14];
 
   ros::Subscriber obstacle_grid_map_sub_;
   ros::Subscriber grid_map_sub_;
